@@ -1,0 +1,25 @@
+# Compiled binaries
+/icehealth
+icehealth.exe
+*.exe
+*.test
+*.out
+/bin/
+/dist/
+
+# Local docker state (data lives in MinIO containers, not the repo)
+/docker/warehouse/
+/docker/notebooks/
+
+# Env / secrets
+.env
+*.local
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local tooling state
+.claude/

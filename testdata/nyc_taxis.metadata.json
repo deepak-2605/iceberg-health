@@ -1,0 +1,162 @@
+{
+  "format-version": 2,
+  "table-uuid": "7a3e1c44-9b2d-4f6a-bc11-1a2b3c4d5e6f",
+  "location": "s3://warehouse/nyc/taxis",
+  "last-sequence-number": 8,
+  "last-updated-ms": 1780531200000,
+  "last-column-id": 7,
+  "current-schema-id": 3,
+  "schemas": [
+    {
+      "type": "struct",
+      "schema-id": 0,
+      "fields": [
+        { "id": 1, "name": "trip_id", "required": true, "type": "long" },
+        { "id": 2, "name": "vendor_id", "required": false, "type": "int" },
+        { "id": 3, "name": "passenger_count", "required": false, "type": "int" },
+        { "id": 4, "name": "trip_distance", "required": false, "type": "double" },
+        { "id": 5, "name": "payment_type", "required": false, "type": "string" }
+      ]
+    },
+    {
+      "type": "struct",
+      "schema-id": 1,
+      "fields": [
+        { "id": 1, "name": "trip_id", "required": true, "type": "long" },
+        { "id": 2, "name": "vendor_id", "required": false, "type": "int" },
+        { "id": 3, "name": "passenger_count", "required": false, "type": "int" },
+        { "id": 4, "name": "trip_distance", "required": false, "type": "double" },
+        { "id": 5, "name": "payment_type", "required": false, "type": "string" },
+        { "id": 6, "name": "tip_amount", "required": false, "type": "double" }
+      ]
+    },
+    {
+      "type": "struct",
+      "schema-id": 2,
+      "fields": [
+        { "id": 1, "name": "trip_id", "required": true, "type": "long" },
+        { "id": 2, "name": "vendor_id", "required": false, "type": "int" },
+        { "id": 3, "name": "passenger_count", "required": false, "type": "int" },
+        { "id": 4, "name": "trip_distance", "required": false, "type": "double" },
+        { "id": 5, "name": "payment_type", "required": false, "type": "string" },
+        { "id": 6, "name": "tip_amount", "required": false, "type": "double" },
+        { "id": 7, "name": "fare_amount", "required": false, "type": "double" }
+      ]
+    },
+    {
+      "type": "struct",
+      "schema-id": 3,
+      "fields": [
+        { "id": 1, "name": "trip_id", "required": true, "type": "long" },
+        { "id": 3, "name": "passenger_count", "required": false, "type": "int" },
+        { "id": 4, "name": "distance_miles", "required": false, "type": "double" },
+        { "id": 5, "name": "payment_type", "required": false, "type": "string" },
+        { "id": 6, "name": "tip_amount", "required": false, "type": "double" },
+        { "id": 7, "name": "fare_amount", "required": false, "type": "double" }
+      ]
+    }
+  ],
+  "default-spec-id": 0,
+  "partition-specs": [
+    {
+      "spec-id": 0,
+      "fields": [
+        { "name": "payment_type", "transform": "identity", "source-id": 5, "field-id": 1000 }
+      ]
+    }
+  ],
+  "last-partition-id": 1000,
+  "default-sort-order-id": 0,
+  "sort-orders": [
+    { "order-id": 0, "fields": [] }
+  ],
+  "properties": {
+    "owner": "data-eng",
+    "write.format.default": "parquet"
+  },
+  "current-snapshot-id": 1000000000000008,
+  "snapshots": [
+    {
+      "snapshot-id": 1000000000000001,
+      "sequence-number": 1,
+      "timestamp-ms": 1768003200000,
+      "schema-id": 0,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-1.avro",
+      "summary": { "operation": "append", "added-data-files": "2", "total-data-files": "2", "added-records": "1000", "total-records": "1000", "added-files-size": "204800", "total-files-size": "204800" }
+    },
+    {
+      "snapshot-id": 1000000000000002,
+      "parent-snapshot-id": 1000000000000001,
+      "sequence-number": 2,
+      "timestamp-ms": 1770249600000,
+      "schema-id": 0,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-2.avro",
+      "summary": { "operation": "append", "added-data-files": "2", "total-data-files": "4", "added-records": "1000", "total-records": "2000", "added-files-size": "204800", "total-files-size": "409600" }
+    },
+    {
+      "snapshot-id": 1000000000000003,
+      "parent-snapshot-id": 1000000000000002,
+      "sequence-number": 3,
+      "timestamp-ms": 1772323200000,
+      "schema-id": 1,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-3.avro",
+      "summary": { "operation": "append", "added-data-files": "2", "total-data-files": "6", "added-records": "1000", "total-records": "3000", "added-files-size": "204800", "total-files-size": "614400" }
+    },
+    {
+      "snapshot-id": 1000000000000004,
+      "parent-snapshot-id": 1000000000000003,
+      "sequence-number": 4,
+      "timestamp-ms": 1773964800000,
+      "schema-id": 1,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-4.avro",
+      "summary": { "operation": "append", "added-data-files": "3", "total-data-files": "9", "added-records": "1500", "total-records": "4500", "added-files-size": "307200", "total-files-size": "921600" }
+    },
+    {
+      "snapshot-id": 1000000000000005,
+      "parent-snapshot-id": 1000000000000004,
+      "sequence-number": 5,
+      "timestamp-ms": 1776211200000,
+      "schema-id": 2,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-5.avro",
+      "summary": { "operation": "append", "added-data-files": "3", "total-data-files": "12", "added-records": "1500", "total-records": "6000", "added-files-size": "307200", "total-files-size": "1228800" }
+    },
+    {
+      "snapshot-id": 1000000000000006,
+      "parent-snapshot-id": 1000000000000005,
+      "sequence-number": 6,
+      "timestamp-ms": 1777593600000,
+      "schema-id": 2,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-6.avro",
+      "summary": { "operation": "append", "added-data-files": "4", "total-data-files": "16", "added-records": "2000", "total-records": "8000", "added-files-size": "409600", "total-files-size": "1638400" }
+    },
+    {
+      "snapshot-id": 1000000000000007,
+      "parent-snapshot-id": 1000000000000006,
+      "sequence-number": 7,
+      "timestamp-ms": 1779667200000,
+      "schema-id": 3,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-7.avro",
+      "summary": { "operation": "append", "added-data-files": "4", "total-data-files": "20", "added-records": "2000", "total-records": "10000", "added-files-size": "409600", "total-files-size": "2048000" }
+    },
+    {
+      "snapshot-id": 1000000000000008,
+      "parent-snapshot-id": 1000000000000007,
+      "sequence-number": 8,
+      "timestamp-ms": 1780531200000,
+      "schema-id": 3,
+      "manifest-list": "s3://warehouse/nyc/taxis/metadata/snap-8.avro",
+      "summary": { "operation": "append", "added-data-files": "8", "total-data-files": "28", "added-records": "8000", "total-records": "18000", "added-files-size": "819200", "total-files-size": "2867200" }
+    }
+  ],
+  "snapshot-log": [
+    { "snapshot-id": 1000000000000001, "timestamp-ms": 1768003200000 },
+    { "snapshot-id": 1000000000000002, "timestamp-ms": 1770249600000 },
+    { "snapshot-id": 1000000000000003, "timestamp-ms": 1772323200000 },
+    { "snapshot-id": 1000000000000004, "timestamp-ms": 1773964800000 },
+    { "snapshot-id": 1000000000000005, "timestamp-ms": 1776211200000 },
+    { "snapshot-id": 1000000000000006, "timestamp-ms": 1777593600000 },
+    { "snapshot-id": 1000000000000007, "timestamp-ms": 1779667200000 },
+    { "snapshot-id": 1000000000000008, "timestamp-ms": 1780531200000 }
+  ],
+  "metadata-log": []
+}

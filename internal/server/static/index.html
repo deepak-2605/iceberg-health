@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iceberg Table Health</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root { --bg:#0f1419; --panel:#1a212b; --line:#2b3543; --text:#e6edf3; --muted:#8b98a5; --accent:#4ea1ff; --warn:#f0883e; --bad:#f85149; --ok:#3fb950; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:20px 28px; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:18px; }
+    h1 span { color:var(--accent); }
+    main { max-width:1000px; margin:0 auto; padding:24px 28px 60px; }
+    .bar { display:flex; gap:10px; margin-bottom:8px; }
+    input[type=text] { flex:1; padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:14px; }
+    button { padding:9px 18px; background:var(--accent); color:#04121f; border:0; border-radius:8px; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:wait; }
+    .hint { color:var(--muted); font-size:12px; margin-bottom:20px; }
+    .meta { color:var(--muted); font-size:12px; margin:4px 0 22px; word-break:break-all; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+    .card .n { font-size:26px; font-weight:700; }
+    .card .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .card.warn .n { color:var(--warn); } .card.bad .n { color:var(--bad); } .card.ok .n { color:var(--ok); }
+    section { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:20px; }
+    section h2 { margin:0 0 14px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; }
+    td.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .pill { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+    .pill.stale { background:rgba(248,81,73,.15); color:var(--bad); }
+    .pill.ok { background:rgba(63,185,80,.15); color:var(--ok); }
+    .tag { font-size:11px; padding:2px 8px; border-radius:6px; background:rgba(78,161,255,.15); color:var(--accent); font-weight:600; }
+    .tag.dropped { background:rgba(248,81,73,.15); color:var(--bad); }
+    .tag.renamed,.tag.retyped { background:rgba(240,136,62,.15); color:var(--warn); }
+    .err { color:var(--bad); }
+    .muted { color:var(--muted); }
+    canvas { max-height:280px; }
+  </style>
+</head>
+<body>
+  <header><h1>🧊 Iceberg Table <span>Health</span></h1></header>
+  <main>
+    <div class="bar">
+      <input id="table" type="text" value="./testdata/nyc_taxis.metadata.json"
+             placeholder="catalog identifier (nyc.taxis) or path to metadata.json" />
+      <button id="go">Analyze</button>
+    </div>
+    <div class="hint">Enter a catalog table identifier or a local metadata.json path, then Analyze.</div>
+
+    <div id="out"></div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const out = $("out");
+    let chart;
+
+    const num = (n) => (n === null || n === undefined || n < 0) ? "–" : Number(n).toLocaleString();
+    const days = (ns) => Math.round(ns / 86400e9);
+    const esc = (s) => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+    async function analyze() {
+      const table = $("table").value.trim();
+      if (!table) return;
+      $("go").disabled = true;
+      out.innerHTML = '<p class="muted">Loading…</p>';
+      try {
+        const res = await fetch("/api/report?table=" + encodeURIComponent(table));
+        if (!res.ok) throw new Error(await res.text());
+        render(await res.json());
+      } catch (e) {
+        out.innerHTML = '<p class="err">Error: ' + esc(e.message) + '</p>';
+      } finally {
+        $("go").disabled = false;
+      }
+    }
+
+    function card(label, value, cls) {
+      return `<div class="card ${cls||''}"><div class="n">${value}</div><div class="l">${label}</div></div>`;
+    }
+
+    function render(r) {
+      const s = r.snapshots, sc = r.schema, sk = r.skew;
+      let html = "";
+
+      html += `<div class="meta">UUID ${esc(r.uuid)} · format v${r.format_version} · ${esc(r.location)}</div>`;
+
+      html += '<div class="cards">';
+      html += card("Snapshots", num(s.total));
+      html += card("Bloat (keep " + s.retention_limit + ")", num(s.bloat_count), s.bloat_count > 0 ? "warn" : "ok");
+      html += card("Stale (>" + days(s.max_age_ns) + "d)", num(s.stale_count), s.stale_count > 0 ? "bad" : "ok");
+      html += card("Schema versions", num(sc.total_schemas));
+      html += card("Columns", num(sc.current_columns));
+      html += '</div>';
+
+      // Growth chart
+      html += '<section><h2>Snapshot growth</h2><canvas id="chart"></canvas></section>';
+
+      // Snapshot timeline
+      html += '<section><h2>Snapshot timeline (newest first)</h2><table><thead><tr>' +
+              '<th>When</th><th>Snapshot</th><th class="num">Files</th><th class="num">Records</th><th class="num">Age</th><th>Status</th>' +
+              '</tr></thead><tbody>';
+      for (const sn of s.snapshots) {
+        const st = sn.stale ? '<span class="pill stale">stale</span>' : '<span class="pill ok">ok</span>';
+        html += `<tr><td>${sn.timestamp.slice(0,10)}</td><td class="muted">${sn.id}</td>` +
+                `<td class="num">${num(sn.total_data_files)}</td><td class="num">${num(sn.total_records)}</td>` +
+                `<td class="num">${days(sn.age_ns)}d</td><td>${st}</td></tr>`;
+      }
+      html += '</tbody></table></section>';
+
+      // Schema evolution
+      html += '<section><h2>Schema evolution</h2>';
+      if (!sc.diffs || sc.diffs.length === 0) {
+        html += '<p class="muted">No changes recorded.</p>';
+      } else {
+        html += '<table><thead><tr><th>Transition</th><th>Change</th><th>Column</th><th>Detail</th></tr></thead><tbody>';
+        for (const d of sc.diffs) for (const c of d.changes) {
+          html += `<tr><td class="muted">#${d.from_schema_id}→#${d.to_schema_id}</td>` +
+                  `<td><span class="tag ${c.kind}">${c.kind}</span></td>` +
+                  `<td>id ${c.column_id} <strong>${esc(c.name)}</strong></td><td>${esc(detail(c))}</td></tr>`;
+        }
+        html += '</tbody></table>';
+      }
+      html += '</section>';
+
+      // Partition skew
+      html += '<section><h2>Partition skew</h2>';
+      if (!sk) {
+        html += '<p class="muted">Not computed — needs a live catalog table with manifest access (the stretch metric).</p>';
+      } else {
+        html += `<div class="cards">${card("Partitions", num(sk.partition_count))}` +
+                card("Max / median", sk.max_median_ratio.toFixed(1) + "×", sk.max_median_ratio > 3 ? "bad" : "ok") +
+                card("Coef. of variation", sk.coefficient_of_variation.toFixed(2)) + '</div>';
+        html += '<table><thead><tr><th>Partition</th><th class="num">Records</th><th class="num">Files</th><th class="num">Bytes</th></tr></thead><tbody>';
+        for (const p of sk.partitions) {
+          html += `<tr><td>${esc(p.key)}</td><td class="num">${num(p.record_count)}</td><td class="num">${num(p.file_count)}</td><td class="num">${num(p.size_bytes)}</td></tr>`;
+        }
+        html += '</tbody></table>';
+      }
+      html += '</section>';
+
+      out.innerHTML = html;
+      drawChart(s);
+    }
+
+    function detail(c) {
+      switch (c.kind) {
+        case "added":   return c.new_type;
+        case "dropped": return "was " + c.old_type;
+        case "renamed": return c.old_name + " → " + c.new_name;
+        case "retyped": return c.old_type + " → " + c.new_type;
+      }
+      return "";
+    }
+
+    function drawChart(s) {
+      const rows = [...s.snapshots].reverse(); // oldest → newest
+      const labels = rows.map(r => r.timestamp.slice(0, 10));
+      if (chart) chart.destroy();
+      chart = new Chart($("chart"), {
+        data: {
+          labels,
+          datasets: [
+            { type:"line", label:"Total records", data: rows.map(r => r.total_records < 0 ? null : r.total_records),
+              yAxisID:"y", borderColor:"#4ea1ff", backgroundColor:"#4ea1ff33", tension:.25, fill:true },
+            { type:"bar", label:"Total data files", data: rows.map(r => r.total_data_files < 0 ? null : r.total_data_files),
+              yAxisID:"y1", backgroundColor:"#f0883e99" },
+          ],
+        },
+        options: {
+          responsive:true,
+          plugins:{ legend:{ labels:{ color:"#e6edf3" } } },
+          scales:{
+            x:{ ticks:{ color:"#8b98a5" }, grid:{ color:"#2b3543" } },
+            y:{ position:"left", title:{display:true,text:"records",color:"#8b98a5"}, ticks:{ color:"#8b98a5" }, grid:{ color:"#2b3543" } },
+            y1:{ position:"right", title:{display:true,text:"files",color:"#8b98a5"}, ticks:{ color:"#8b98a5" }, grid:{ drawOnChartArea:false } },
+          },
+        },
+      });
+    }
+
+    $("go").addEventListener("click", analyze);
+    $("table").addEventListener("keydown", e => { if (e.key === "Enter") analyze(); });
+    analyze(); // auto-run on load with the default fixture
+  </script>
+</body>
+</html>
