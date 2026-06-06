@@ -64,15 +64,23 @@ go build -o icehealth ./cmd/icehealth
 ## Usage
 
 ```text
-icehealth analyze <table|metadata.json> [flags]
+icehealth analyze <table|metadata.json> [more tables...] [flags]
   --retention int        keep this many newest snapshots before counting bloat (default 5)
   --max-age duration     snapshots older than this are stale (default 168h)
   --json                 emit JSON instead of a table
+  --concurrency int      max tables analyzed in parallel (default 4)
   --catalog-uri string   REST catalog URI for table identifiers (default http://localhost:8181)
 
 icehealth serve [flags]
   --port int             HTTP port (default 8080)
   --catalog-uri string   REST catalog URI (default http://localhost:8181)
+```
+
+Pass several tables and they're analyzed concurrently (goroutine fan-out, bounded
+by `--concurrency`), with output kept in input order:
+
+```bash
+icehealth analyze ./testdata/nyc_taxis.metadata.json ./testdata/web_events.metadata.json
 ```
 
 A `<table>` argument is either a catalog identifier (`nyc.taxis`) or a path to a

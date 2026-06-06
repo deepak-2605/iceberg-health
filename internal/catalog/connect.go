@@ -89,6 +89,12 @@ func Resolve(ctx context.Context, source, catalogURI string) (table.Metadata, *t
 		return meta, nil, err
 	}
 
+	// If it clearly looks like a file path (a separator or a .json suffix) but
+	// doesn't exist, say so plainly instead of misfiring at the catalog.
+	if strings.HasSuffix(source, ".json") || strings.ContainsAny(source, `/\`) {
+		return nil, nil, fmt.Errorf("metadata file not found: %q", source)
+	}
+
 	cat, err := Connect(ctx, catalogURI)
 	if err != nil {
 		return nil, nil, err

@@ -15,3 +15,11 @@ func RenderJSON(w io.Writer, r metrics.HealthReport) error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(r)
 }
+
+// RenderJSONMany writes a JSON array of reports — used when analyzing several
+// tables at once so the output stays valid, parseable JSON.
+func RenderJSONMany(w io.Writer, reports []metrics.HealthReport) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(reports)
+}
