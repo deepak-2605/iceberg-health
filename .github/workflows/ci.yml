@@ -19,3 +19,5 @@ jobs:
         run: go build ./...
       - name: Test
         run: go test ./... -v
+      - name: Integration test (real Iceberg table via SQL catalog, no Docker)
+        run: go test -tags=integration ./internal/metrics/... -run TestAnalyzeSkew_RealTable -v

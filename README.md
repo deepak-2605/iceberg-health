@@ -117,12 +117,25 @@ docker exec spark-iceberg spark-sql -f /tmp/seed.sql
 ## Development
 
 ```bash
-go test ./...     # table-driven tests for the metrics
+go test ./...                                                              # unit tests
+go test -tags=integration ./internal/metrics/... -run TestAnalyzeSkew_RealTable -v  # integration test
 go vet ./...
 ```
+
+The integration test proves `AnalyzeSkew` against a **real** Iceberg table — an
+actual Arrow-written, partitioned table (via iceberg-go's SQL catalog + local
+filesystem, fully in-process, no Docker/S3/network) — rather than just synthetic
+numbers. It runs in CI on every push. See
+[`internal/metrics/skew_integration_test.go`](internal/metrics/skew_integration_test.go).
 
 ## Status
 
 CLI, JSON output, and the web dashboard are complete (snapshot bloat, stale
-snapshots, schema evolution). Partition-skew code is implemented for live
-catalog tables. See [`PLAN.md`](./PLAN.md) for the roadmap.
+snapshots, schema evolution) and covered by tests. Partition skew's math and its
+manifest-reading I/O are both proven against a real Iceberg table (see above).
+The one remaining gap: the REST-catalog *client* path (`--catalog-uri`) compiles
+against the real API but hasn't been exercised against a live REST server in this
+environment — the downstream code it feeds (`Resolve`, `AnalyzeSkew`) is the same
+code the SQL-catalog integration test already validates against real data, just
+via a different catalog implementation for the connection itself. See
+[`PLAN.md`](./PLAN.md) for the roadmap.
