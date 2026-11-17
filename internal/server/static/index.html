@@ -105,7 +105,8 @@
               '<th>When</th><th>Snapshot</th><th class="num">Files</th><th class="num">Records</th><th class="num">Age</th><th>Status</th>' +
               '</tr></thead><tbody>';
       for (const sn of s.snapshots) {
-        const st = sn.stale ? '<span class="pill stale">stale</span>' : '<span class="pill ok">ok</span>';
+        const st = sn.referenced ? '<span class="pill ok">pinned</span>'
+                 : sn.stale ? '<span class="pill stale">stale</span>' : '<span class="pill ok">ok</span>';
         html += `<tr><td>${sn.timestamp.slice(0,10)}</td><td class="muted">${sn.id}</td>` +
                 `<td class="num">${num(sn.total_data_files)}</td><td class="num">${num(sn.total_records)}</td>` +
                 `<td class="num">${days(sn.age_ns)}d</td><td>${st}</td></tr>`;

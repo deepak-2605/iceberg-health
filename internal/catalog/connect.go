@@ -15,6 +15,12 @@ import (
 	icecat "github.com/apache/iceberg-go/catalog"
 	"github.com/apache/iceberg-go/catalog/rest"
 	"github.com/apache/iceberg-go/table"
+
+	// Registers the s3://, gs:// and azblob:// FileIO schemes. Without it, reading
+	// manifests from a live table (partition skew) fails with "io scheme not
+	// registered". S3 settings come from the standard AWS env vars
+	// (AWS_S3_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION).
+	_ "github.com/apache/iceberg-go/io/gocloud"
 )
 
 // Connect dials an Iceberg REST catalog at uri and returns a handle to it.

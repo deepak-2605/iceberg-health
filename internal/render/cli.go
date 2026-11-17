@@ -37,7 +37,9 @@ func renderSnapshots(w io.Writer, s metrics.SnapshotReport) {
 	fmt.Fprintln(tw, "  WHEN\tSNAPSHOT\tFILES\tRECORDS\tAGE\tSTATUS")
 	for _, snap := range s.Snapshots {
 		status := "ok"
-		if snap.Stale {
+		if snap.Referenced {
+			status = "pinned"
+		} else if snap.Stale {
 			status = "STALE"
 		}
 		fmt.Fprintf(tw, "  %s\t%d\t%s\t%s\t%dd\t%s\n",

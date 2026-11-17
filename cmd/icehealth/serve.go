@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	serveHost       string
 	servePort       int
 	serveCatalogURI string
 	serveRetention  int
@@ -20,6 +21,7 @@ var serveCmd = &cobra.Command{
 	Short: "Run the web dashboard",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return server.Run(server.Options{
+			Host:           serveHost,
 			Port:           servePort,
 			CatalogURI:     serveCatalogURI,
 			RetentionLimit: serveRetention,
@@ -30,6 +32,7 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	f := serveCmd.Flags()
+	f.StringVar(&serveHost, "host", "127.0.0.1", "interface to bind (use 0.0.0.0 to expose on the network — not recommended)")
 	f.IntVar(&servePort, "port", 8080, "HTTP port to listen on")
 	f.StringVar(&serveCatalogURI, "catalog-uri", "http://localhost:8181", "REST catalog URI")
 	f.IntVar(&serveRetention, "retention", 5, "keep this many newest snapshots before counting bloat")
