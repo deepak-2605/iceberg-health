@@ -70,3 +70,25 @@ func TestAnalyzeSnapshots(t *testing.T) {
 		})
 	}
 }
+
+// The current snapshot (and anything a branch/tag points at) can't be expired, so
+// it must never be counted as stale, no matter how old it is.
+func TestAnalyzeSnapshots_CurrentSnapshotNeverStale(t *testing.T) {
+	meta := loadTestMeta(t)
+	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC) // all 3 snapshots are ~1y old
+
+	got := AnalyzeSnapshots(meta, SnapshotConfig{MaxAge: 7 * 24 * time.Hour, Now: now})
+
+	if got.StaleCount != 2 {
+		t.Errorf("StaleCount = %d, want 2 (current snapshot excluded)", got.StaleCount)
+	}
+	for _, s := range got.Snapshots {
+		isCurrent := s.ID == 3
+		if s.Referenced != isCurrent {
+			t.Errorf("snapshot %d Referenced = %v, want %v", s.ID, s.Referenced, isCurrent)
+		}
+		if s.Stale == isCurrent {
+			t.Errorf("snapshot %d Stale = %v, want %v", s.ID, s.Stale, !isCurrent)
+		}
+	}
+}

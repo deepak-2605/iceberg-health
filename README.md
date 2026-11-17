@@ -12,11 +12,11 @@ Iceberg Table Health — nyc.taxis
 UUID 7a3e1c44-… · format v2 · s3://warehouse/nyc/taxis
 
 SNAPSHOTS
-  total 8 · bloat 3 (keep newest 5) · stale 7 (> 7d)
+  total 8 · bloat 3 (keep newest 5) · stale 7 (> 7d, current snapshot excluded)
   span 2026-01-10 → 2026-06-04 (145 days)
 
   WHEN        SNAPSHOT          FILES  RECORDS  AGE   STATUS
-  2026-06-04  1000000000000008  28     18000    1d    ok
+  2026-06-04  1000000000000008  28     18000    1d    pinned
   2026-05-25  1000000000000007  20     10000    11d   STALE
   …
 
@@ -44,7 +44,7 @@ old snapshots/data files are never removed until you explicitly expire them.
 | Metric | What it flags | Where it reads from |
 |---|---|---|
 | **Snapshot bloat** | Snapshots beyond a retention limit — excess metadata + pinned data files | `metadata.json` (cheap) |
-| **Stale snapshots** | Snapshots older than `--max-age` that should be expired | `metadata.json` (cheap) |
+| **Stale snapshots** | Snapshots older than `--max-age` that should be expired (the current snapshot and branch/tag heads are never stale) | `metadata.json` (cheap) |
 | **Schema evolution** | Add/drop/rename/retype history, diffed by **stable column ID** (so a rename is a rename, not drop+add) | `metadata.json` (cheap) |
 | **Partition skew** | One partition far larger than the rest → query stragglers | manifests (live tables only) |
 
@@ -72,6 +72,7 @@ icehealth analyze <table|metadata.json> [more tables...] [flags]
   --catalog-uri string   REST catalog URI for table identifiers (default http://localhost:8181)
 
 icehealth serve [flags]
+  --host string          interface to bind (default 127.0.0.1; the API can read local file paths, so keep it local)
   --port int             HTTP port (default 8080)
   --catalog-uri string   REST catalog URI (default http://localhost:8181)
 ```
@@ -112,6 +113,16 @@ docker cp docker/seed.sql spark-iceberg:/tmp/seed.sql
 docker exec spark-iceberg spark-sql -f /tmp/seed.sql
 
 ./icehealth analyze nyc.taxis --catalog-uri http://localhost:8181
+```
+
+Snapshot and schema metrics need only the catalog. **Partition skew** also reads
+manifest files from object storage, configured through the standard AWS env vars
+(for the bundled MinIO stack):
+
+```bash
+AWS_S3_ENDPOINT=http://localhost:9000 AWS_REGION=us-east-1 \
+AWS_ACCESS_KEY_ID=admin AWS_SECRET_ACCESS_KEY=password \
+  ./icehealth analyze nyc.taxis
 ```
 
 ## Development

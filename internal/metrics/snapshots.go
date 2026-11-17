@@ -36,7 +36,11 @@ type SnapshotInfo struct {
 	TotalDataFiles int64         `json:"total_data_files"`
 	TotalRecords   int64         `json:"total_records"`
 	Age            time.Duration `json:"age_ns"`
-	Stale          bool          `json:"stale"`
+	// Referenced is true when a branch or tag (including main, i.e. the table's
+	// current snapshot) points at this snapshot. Such snapshots cannot be expired,
+	// so they are never counted as stale.
+	Referenced bool `json:"referenced"`
+	Stale      bool `json:"stale"`
 }
 
 // SnapshotReport is the result of analyzing a table's snapshots.
@@ -48,7 +52,7 @@ type SnapshotReport struct {
 	RetentionLimit int            `json:"retention_limit"`
 	BloatCount     int            `json:"bloat_count"` // snapshots beyond the retention limit
 	MaxAge         time.Duration  `json:"max_age_ns"`
-	StaleCount     int            `json:"stale_count"` // snapshots older than MaxAge
+	StaleCount     int            `json:"stale_count"` // unreferenced snapshots older than MaxAge
 	Snapshots      []SnapshotInfo `json:"snapshots"`   // newest first
 }
 
@@ -59,6 +63,16 @@ func AnalyzeSnapshots(meta table.Metadata, cfg SnapshotConfig) SnapshotReport {
 	}
 
 	raw := meta.Snapshots() // []table.Snapshot, in metadata order
+
+	// Snapshots pinned by a branch/tag (or the current snapshot) can't be expired,
+	// so flagging them as stale would be noise.
+	referenced := make(map[int64]bool)
+	if cur := meta.CurrentSnapshot(); cur != nil {
+		referenced[cur.SnapshotID] = true
+	}
+	for _, ref := range meta.Refs() {
+		referenced[ref.SnapshotID] = true
+	}
 
 	// Preallocate: we know exactly how many we'll append, so size the backing
 	// array once instead of letting append grow it repeatedly.
@@ -81,7 +95,8 @@ func AnalyzeSnapshots(meta table.Metadata, cfg SnapshotConfig) SnapshotReport {
 			info.TotalDataFiles = summaryInt(s.Summary, "total-data-files")
 			info.TotalRecords = summaryInt(s.Summary, "total-records")
 		}
-		info.Stale = cfg.MaxAge > 0 && info.Age > cfg.MaxAge
+		info.Referenced = referenced[s.SnapshotID]
+		info.Stale = !info.Referenced && cfg.MaxAge > 0 && info.Age > cfg.MaxAge
 
 		infos = append(infos, info)
 	}
@@ -110,7 +125,7 @@ func AnalyzeSnapshots(meta table.Metadata, cfg SnapshotConfig) SnapshotReport {
 		report.BloatCount = len(infos) - cfg.RetentionLimit
 	}
 
-	// Stale: count snapshots older than MaxAge.
+	// Stale: count unreferenced snapshots older than MaxAge.
 	for i := range infos {
 		if infos[i].Stale {
 			report.StaleCount++

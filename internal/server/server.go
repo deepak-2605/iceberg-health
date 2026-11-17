@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/deepak-2605/iceberg-health/internal/catalog"
@@ -24,6 +26,7 @@ var staticFS embed.FS
 
 // Options configures the dashboard server.
 type Options struct {
+	Host           string // interface to bind; "" means 127.0.0.1
 	Port           int
 	CatalogURI     string
 	RetentionLimit int
@@ -41,15 +44,22 @@ func Run(opts Options) error {
 	mux.HandleFunc("/api/report", reportHandler(opts))
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 
-	addr := fmt.Sprintf(":%d", opts.Port)
-	log.Printf("icehealth dashboard listening on http://localhost%s", addr)
+	host := opts.Host
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(opts.Port))
+	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+		log.Printf("WARNING: binding to %s exposes local file reads via /api/report?table=<path> to the network", host)
+	}
+	log.Printf("icehealth dashboard listening on http://%s", addr)
 	return http.ListenAndServe(addr, mux)
 }
 
 // reportHandler serves GET /api/report?table=<identifier|path> as JSON.
 //
 // Note: this is a local dev dashboard — the table parameter may be a local file
-// path, so only run it bound to localhost.
+// path, so Run binds to 127.0.0.1 unless --host says otherwise.
 func reportHandler(opts Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		source := r.URL.Query().Get("table")
